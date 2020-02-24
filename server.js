@@ -5,7 +5,7 @@
 
 var express = require('express');
 var app = express();
-try{
+try {
   var mongoose = require('mongoose');
 } catch (e) {
   console.log(e);
@@ -15,16 +15,16 @@ var path = require('path');
 var bodyParser = require('body-parser');
 var router = express.Router();
 
-var enableCORS = function(req, res, next) {
+var enableCORS = function (req, res, next) {
   if (!process.env.DISABLE_XORIGIN) {
-    var allowedOrigins = ['https://marsh-glazer.gomix.me','https://narrow-plane.gomix.me', 'https://www.freecodecamp.com'];
+    var allowedOrigins = ['https://marsh-glazer.gomix.me', 'https://narrow-plane.gomix.me', 'https://www.freecodecamp.com'];
     var origin = req.headers.origin;
-    if(!process.env.XORIGIN_RESTRICT || allowedOrigins.indexOf(origin) > -1) {
+    if (!process.env.XORIGIN_RESTRICT || allowedOrigins.indexOf(origin) > -1) {
       console.log(req.method);
       res.set({
-        "Access-Control-Allow-Origin" : origin,
-        "Access-Control-Allow-Methods" : "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers" : "Origin, X-Requested-With, Content-Type, Accept"
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Origin, X-Requested-With, Content-Type, Accept"
       });
     }
   }
@@ -35,39 +35,45 @@ var enableCORS = function(req, res, next) {
 // wrong callbacks that will never be called
 var timeout = 10000;
 
-app.use(bodyParser.urlencoded({extended: 'false'}));
+app.use(bodyParser.urlencoded({ extended: 'false' }));
 app.use(bodyParser.json());
 
-app.get('/', function(req, res) {
+app.get('/', function (req, res) {
   res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
-router.get('/file/*?', function(req, res, next) {
-  if(req.params[0] === '.env') { return next({status: 401, message: 'ACCESS DENIED'}) }
-  fs.readFile(path.join(__dirname, req.params[0]), function(err, data){
-    if(err) { return next(err) }
+router.get('/file/*?', function (req, res, next) {
+  if (req.params[0] === '.env') { return next({ status: 401, message: 'ACCESS DENIED' }) }
+  fs.readFile(path.join(__dirname, req.params[0]), function (err, data) {
+    if (err) { return next(err) }
     res.type('txt').send(data.toString());
   });
 });
 
-router.get('/is-mongoose-ok', function(req, res) {
+mongoose
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+  })
+
+router.get('/is-mongoose-ok', function (req, res) {
   if (mongoose) {
-    res.json({isMongooseOk: !!mongoose.connection.readyState})
+    res.json({ isMongooseOk: !!mongoose.connection.readyState })
   } else {
-    res.json({isMongooseOk: false})
+    res.json({ isMongooseOk: false })
   }
 });
 
 var Person = require('./myApp.js').PersonModel;
 
-router.use(function(req, res, next) {
-  if(req.method !== 'OPTIONS' && Person.modelName !== 'Person') {
-    return next({message: 'Person Model is not correct'});
+router.use(function (req, res, next) {
+  if (req.method !== 'OPTIONS' && Person.modelName !== 'Person') {
+    return next({ message: 'Person Model is not correct' });
   }
   next();
 });
 
-router.post('/mongoose-model', function(req, res, next) {
+router.post('/mongoose-model', function (req, res, next) {
   // try to create a new instance based on their model
   // verify it's correctly defined in some way
   var p;
@@ -76,57 +82,57 @@ router.post('/mongoose-model', function(req, res, next) {
 });
 
 var createPerson = require('./myApp.js').createAndSavePerson;
-router.get('/create-and-save-person', function(req, res, next) {
+router.get('/create-and-save-person', function (req, res, next) {
   // in case of incorrect function use wait timeout then respond
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-  createPerson(function(err, data) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+  createPerson(function (err, data) {
     clearTimeout(t);
-    if(err) { return (next(err)); }
-    if(!data) {
+    if (err) { return (next(err)); }
+    if (!data) {
       console.log('Missing `done()` argument');
-      return next({message: 'Missing callback argument'});
+      return next({ message: 'Missing callback argument' });
     }
-     Person.findById(data._id, function(err, pers) {
-       if(err) { return (next(err)); }
-       res.json(pers);
-       pers.remove();
-     });
+    Person.findById(data._id, function (err, pers) {
+      if (err) { return (next(err)); }
+      res.json(pers);
+      pers.remove();
+    });
   });
 });
 
 var createPeople = require('./myApp.js').createManyPeople;
-router.post('/create-many-people', function(req, res, next) {
-  Person.remove({}, function(err) {
-    if(err) { return (next(err)); }
+router.post('/create-many-people', function (req, res, next) {
+  Person.remove({}, function (err) {
+    if (err) { return (next(err)); }
     // in case of incorrect function use wait timeout then respond
-    var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-    createPeople(req.body, function(err, data) {
+    var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+    createPeople(req.body, function (err, data) {
       clearTimeout(t);
-      if(err) { return (next(err)); }
-      if(!data) {
+      if (err) { return (next(err)); }
+      if (!data) {
         console.log('Missing `done()` argument');
-        return next({message: 'Missing callback argument'});
+        return next({ message: 'Missing callback argument' });
       }
-       Person.find({}, function(err, pers){
-         if(err) { return (next(err)); }
-         res.json(pers);
-         Person.remove().exec();
-       });
+      Person.find({}, function (err, pers) {
+        if (err) { return (next(err)); }
+        res.json(pers);
+        Person.remove().exec();
+      });
     });
   });
 });
 
 var findByName = require('./myApp.js').findPeopleByName;
-router.post('/find-all-by-name', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-  Person.create(req.body, function(err, pers) {
-    if(err) { return next(err) }
-    findByName(pers.name, function(err, data) {
+router.post('/find-all-by-name', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+  Person.create(req.body, function (err, pers) {
+    if (err) { return next(err) }
+    findByName(pers.name, function (err, data) {
       clearTimeout(t);
-      if(err) { return next(err) }
-      if(!data) {
+      if (err) { return next(err) }
+      if (!data) {
         console.log('Missing `done()` argument');
-        return next({message: 'Missing callback argument'});
+        return next({ message: 'Missing callback argument' });
       }
       res.json(data);
       Person.remove().exec();
@@ -135,17 +141,17 @@ router.post('/find-all-by-name', function(req, res, next) {
 });
 
 var findByFood = require('./myApp.js').findOneByFood;
-router.post('/find-one-by-food', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
+router.post('/find-one-by-food', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
   var p = new Person(req.body);
-  p.save(function(err, pers) {
-    if(err) { return next(err) }
-    findByFood(pers.favoriteFoods[0], function(err, data) {
+  p.save(function (err, pers) {
+    if (err) { return next(err) }
+    findByFood(pers.favoriteFoods[0], function (err, data) {
       clearTimeout(t);
-      if(err) { return next(err) }
-      if(!data) {
+      if (err) { return next(err) }
+      if (!data) {
         console.log('Missing `done()` argument');
-        return next({message: 'Missing callback argument'});
+        return next({ message: 'Missing callback argument' });
       }
       res.json(data);
       p.remove();
@@ -154,17 +160,17 @@ router.post('/find-one-by-food', function(req, res, next) {
 });
 
 var findById = require('./myApp.js').findPersonById;
-router.get('/find-by-id', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-  var p = new Person({name: 'test', age: 0, favoriteFoods: ['none']});
-  p.save(function(err, pers) {
-    if(err) { return next(err) }
-    findById(pers._id, function(err, data) {
+router.get('/find-by-id', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+  var p = new Person({ name: 'test', age: 0, favoriteFoods: ['none'] });
+  p.save(function (err, pers) {
+    if (err) { return next(err) }
+    findById(pers._id, function (err, data) {
       clearTimeout(t);
-      if(err) { return next(err) }
-      if(!data) {
+      if (err) { return next(err) }
+      if (!data) {
         console.log('Missing `done()` argument');
-        return next({message: 'Missing callback argument'});
+        return next({ message: 'Missing callback argument' });
       }
       res.json(data);
       p.remove();
@@ -173,18 +179,18 @@ router.get('/find-by-id', function(req, res, next) {
 });
 
 var findEdit = require('./myApp.js').findEditThenSave;
-router.post('/find-edit-save', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
+router.post('/find-edit-save', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
   var p = new Person(req.body);
-  p.save(function(err, pers) {
-    if(err) { return next(err) }
+  p.save(function (err, pers) {
+    if (err) { return next(err) }
     try {
-      findEdit(pers._id, function(err, data) {
+      findEdit(pers._id, function (err, data) {
         clearTimeout(t);
-        if(err) { return next(err) }
-        if(!data) {
+        if (err) { return next(err) }
+        if (!data) {
           console.log('Missing `done()` argument');
-          return next({message: 'Missing callback argument'});
+          return next({ message: 'Missing callback argument' });
         }
         res.json(data);
         p.remove();
@@ -197,15 +203,15 @@ router.post('/find-edit-save', function(req, res, next) {
 });
 
 var update = require('./myApp.js').findAndUpdate;
-router.post('/find-one-update', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
+router.post('/find-one-update', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
   var p = new Person(req.body);
-  p.save(function(err, pers) {
-    if(err) { return next(err) }
+  p.save(function (err, pers) {
+    if (err) { return next(err) }
     try {
-      update(pers.name, function(err, data) {
+      update(pers.name, function (err, data) {
         clearTimeout(t);
-        if(err) { return next(err) }
+        if (err) { return next(err) }
         if (!data) {
           console.log('Missing `done()` argument');
           return next({ message: 'Missing callback argument' });
@@ -221,24 +227,24 @@ router.post('/find-one-update', function(req, res, next) {
 });
 
 var removeOne = require('./myApp.js').removeById;
-router.post('/remove-one-person', function(req, res, next) {
-  Person.remove({}, function(err) {
-    if(err) { return next(err) }
-    var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
+router.post('/remove-one-person', function (req, res, next) {
+  Person.remove({}, function (err) {
+    if (err) { return next(err) }
+    var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
     var p = new Person(req.body);
-    p.save(function(err, pers) {
-      if(err) { return next(err) }
+    p.save(function (err, pers) {
+      if (err) { return next(err) }
       try {
-        removeOne(pers._id, function(err, data) {
+        removeOne(pers._id, function (err, data) {
           clearTimeout(t);
-          if(err) { return next(err) }
-          if(!data) {
+          if (err) { return next(err) }
+          if (!data) {
             console.log('Missing `done()` argument');
-            return next({message: 'Missing callback argument'});
+            return next({ message: 'Missing callback argument' });
           }
           console.log(data)
-          Person.count(function(err, cnt) {
-            if(err) { return next(err) }
+          Person.count(function (err, cnt) {
+            if (err) { return next(err) }
             data = data.toObject();
             data.count = cnt;
             console.log(data)
@@ -254,25 +260,25 @@ router.post('/remove-one-person', function(req, res, next) {
 });
 
 var removeMany = require('./myApp.js').removeManyPeople;
-router.post('/remove-many-people', function(req, res, next) {
-  Person.remove({}, function(err) {
-    if(err) { return next(err) }
-    var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-    Person.create(req.body, function(err, pers) {
-      if(err) { return next(err) }
+router.post('/remove-many-people', function (req, res, next) {
+  Person.remove({}, function (err) {
+    if (err) { return next(err) }
+    var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+    Person.create(req.body, function (err, pers) {
+      if (err) { return next(err) }
       try {
-        removeMany(function(err, data) {
+        removeMany(function (err, data) {
           clearTimeout(t);
-          if(err) { return next(err) }
-          if(!data) {
+          if (err) { return next(err) }
+          if (!data) {
             console.log('Missing `done()` argument');
-            return next({message: 'Missing callback argument'});
+            return next({ message: 'Missing callback argument' });
           }
-          Person.count(function(err, cnt) {
-            if(err) { return next(err) }
+          Person.count(function (err, cnt) {
+            if (err) { return next(err) }
             if (data.ok === undefined) {
               // for mongoose v4
-               try {
+              try {
                 data = JSON.parse(data);
               } catch (e) {
                 console.log(e);
@@ -295,16 +301,16 @@ router.post('/remove-many-people', function(req, res, next) {
 });
 
 var chain = require('./myApp.js').queryChain;
-router.post('/query-tools', function(req, res, next) {
-  var t = setTimeout(() => { next({message: 'timeout'}) }, timeout);
-  Person.remove({}, function(err) {
-    if(err) { return next(err) }
-    Person.create(req.body, function(err, pers) {
-      if(err) { return next(err) }
+router.post('/query-tools', function (req, res, next) {
+  var t = setTimeout(() => { next({ message: 'timeout' }) }, timeout);
+  Person.remove({}, function (err) {
+    if (err) { return next(err) }
+    Person.create(req.body, function (err, pers) {
+      if (err) { return next(err) }
       try {
-        chain(function(err, data) {
+        chain(function (err, data) {
           clearTimeout(t);
-          if(err) { return next(err) }
+          if (err) { return next(err) }
           if (!data) {
             console.log('Missing `done()` argument');
             return next({ message: 'Missing callback argument' });
@@ -322,8 +328,8 @@ router.post('/query-tools', function(req, res, next) {
 app.use('/_api', enableCORS, router);
 
 // Error handler
-app.use(function(err, req, res, next) {
-  if(err) {
+app.use(function (err, req, res, next) {
+  if (err) {
     res.status(err.status || 500)
       .type('txt')
       .send(err.message || 'SERVER ERROR');
@@ -331,15 +337,15 @@ app.use(function(err, req, res, next) {
 });
 
 // Unmatched routes handler
-app.use(function(req, res){
-  if(req.method.toLowerCase() === 'options') {
+app.use(function (req, res) {
+  if (req.method.toLowerCase() === 'options') {
     res.end();
   } else {
     res.status(404).type('txt').send('Not Found');
   }
 })
 
-var listener = app.listen(process.env.PORT || 3000 , function () {
+var listener = app.listen(process.env.PORT || 3000, function () {
   console.log('Your app is listening on port ' + listener.address().port);
 });
 
